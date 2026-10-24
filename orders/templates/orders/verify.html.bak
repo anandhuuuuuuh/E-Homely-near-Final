@@ -1,0 +1,101 @@
+{% extends 'orders/base.html' %}
+{% block title %}Confirm your email - E-Homely{% endblock %}
+{% block content %}
+<h1>Enter your code</h1>
+<p>We sent a 6-digit code to <strong>{{ pending.email }}</strong>. It is valid for 5 minutes. Check your spam folder if you don't see it.</p>
+<ul>{% for l in pending.lines %}<li>{{ l.qty }} x {{ l.name }}</li>{% endfor %}</ul>
+<p><strong>Total: {{ pending.total }}</strong> (pay at pickup)</p>
+
+<p class="error" id="err" role="alert" {% if not error %}hidden{% endif %}>{{ error }}</p>
+
+<form method="post" id="codeform">
+  {% csrf_token %}
+  <p><input id="code" name="code" inputmode="numeric" autocomplete="one-time-code"
+            maxlength="6" pattern="[0-9]{6}" required autofocus></p>
+  <button type="submit" id="place">Place order</button>
+</form>
+
+<p class="fine" style="margin-top:14px">
+  <span id="resendnote"></span>
+  <button type="button" id="resend" style="width:auto;padding:6px 14px;font-size:14px">Send a new code</button>
+</p>
+
+<script>
+  const form = document.getElementById('codeform');
+  const input = document.getElementById('code');
+  const err = document.getElementById('err');
+  const placeBtn = document.getElementById('place');
+  const resendBtn = document.getElementById('resend');
+  const note = document.getElementById('resendnote');
+  const csrf = form.querySelector('[name=csrfmiddlewaretoken]').value;
+  let busy = false;
+
+  function showError(msg) { err.textContent = msg || ''; err.hidden = !msg; }
+
+  // ----- Check the code as soon as 6 digits are typed -----
+  input.addEventListener('input', () => {
+    input.value = input.value.replace(/\D/g, '').slice(0, 6);
+    showError('');
+    if (input.value.length === 6) submitCode();
+  });
+  form.addEventListener('submit', e => { e.preventDefault(); submitCode(); });
+
+  async function submitCode() {
+    if (busy || input.value.length !== 6) return;
+    busy = true;
+    placeBtn.disabled = true;
+    placeBtn.textContent = 'Checking...';
+    try {
+      const res = await fetch(location.href, {
+        method: 'POST',
+        body: new FormData(form),
+        headers: {'X-Requested-With': 'fetch'},
+      });
+      const data = await res.json();
+      if (data.ok || data.redirect) { location.href = data.redirect; return; }
+      showError(data.error);
+      input.select();
+    } catch (e) {
+      showError('Network problem. Please try again.');
+    }
+    busy = false;
+    placeBtn.disabled = false;
+    placeBtn.textContent = 'Place order';
+  }
+
+  // ----- Resend with a 30 second cooldown -----
+  let wait = 30;
+  let timer = null;
+  function tickResend() {
+    clearTimeout(timer);
+    if (wait > 0) {
+      resendBtn.disabled = true;
+      note.textContent = `You can ask for a new code in ${wait}s.`;
+      wait -= 1;
+      timer = setTimeout(tickResend, 1000);
+    } else {
+      resendBtn.disabled = false;
+      note.textContent = 'Did not get it?';
+    }
+  }
+  tickResend();
+
+  resendBtn.addEventListener('click', async () => {
+    resendBtn.disabled = true;
+    try {
+      const res = await fetch('{% url "resend_code" %}', {
+        method: 'POST',
+        headers: {'X-CSRFToken': csrf},
+      });
+      const data = await res.json();
+      if (data.redirect) { location.href = data.redirect; return; }
+      if (data.ok) { showError(''); input.value = ''; input.focus(); }
+      else showError(data.error);
+    } catch (e) {
+      showError('Network problem. Please try again.');
+    }
+    wait = 30;
+    tickResend();
+  });
+</script>
+{% endblock %}

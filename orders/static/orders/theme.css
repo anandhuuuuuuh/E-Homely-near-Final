@@ -1,0 +1,77 @@
+/* E-Homely "Banana leaf & jaggery" theme.
+   Food-led colours: roast-cocoa brown (wholesome, home-cooked), paprika orange (appetite, warmth),
+   curry-leaf green (fresh), on a pale banana-leaf background. Sticker look: outlines + hard shadows.
+   Loaded LAST on both the phone and laptop layouts. Change the brand by editing only the first block. */
+:root{
+  --ink:#2e1a12; --spice:#bf4d1a; --leafg:#3d6b35; --fresh:#d6e6b4; --apricot:#ffc48a; --sage:#e3ead2;
+  --mist:#f3f6ea; --mist-rgb:243,246,234; --ink-rgb:46,26,18;
+  /* phone names */
+  --leaf:var(--spice); --leaf-deep:var(--ink); --clay:var(--leafg); --haldi:var(--apricot); --chilli:#c0392b;
+  --paper:#fffefa; --tint:var(--sage); --muted:#6b5b4e; --line:#d6dcc4;
+  --display:'Unbounded','DM Sans',system-ui,sans-serif; --body:'DM Sans',system-ui,sans-serif;
+  /* laptop names */
+  --cream:var(--mist); --green:var(--spice); --green-dark:var(--ink); --orange:var(--leafg); --brown:var(--ink);
+  --pop:4px 4px 0 var(--ink); --shadow:var(--pop);
+}
+body{font-family:var(--body)}
+
+/* ---------- type: wide, chunky headings ---------- */
+h1{font-size:clamp(26px,7vw,48px);letter-spacing:-.04em;line-height:1.1}
+h2{font-size:22px}
+body.desktop h1,body.desktop h2,body.desktop h3,body.desktop .ph,body.desktop .t-no,body.desktop .coin{font-family:var(--display)}
+body.desktop .drow h3,body.desktop .dpanel h2{font-family:var(--body)}
+body.desktop .d-hero h1{font-size:clamp(38px,4.6vw,62px);letter-spacing:-.04em;line-height:1.08;max-width:14ch}
+body.desktop .page-head h1,body.desktop .token-intro h1{font-size:clamp(30px,3.4vw,46px);letter-spacing:-.03em}
+body.desktop .avail h2,body.desktop .how h2,body.desktop .about h2{font-size:clamp(28px,3.2vw,42px);letter-spacing:-.03em}
+body.desktop .cat-title{font-size:22px}body.desktop .step-card h3{font-size:17px}body.desktop .t-no{font-size:50px}
+.top .hero h1{font-size:clamp(22px,5.2vh,44px)}
+.top .clock{font-size:clamp(24px,4.8vh,36px)}.top .nowtitle{font-size:clamp(15px,2.3vh,18px)}
+.mealcard h3,.meals-screen .mealcard h3{font-size:clamp(17px,2.8vh,24px)}
+.orderno{font-size:52px}.dc-info h2{font-size:20px}.dc-pic{font-size:110px}
+.brand{font-size:17px}
+
+/* ---------- logo as an apricot sticker ---------- */
+.logo,.brand-mark{display:grid;place-items:center;width:40px;height:40px;border:2px solid var(--ink);border-radius:10px;
+  background:var(--apricot);color:var(--ink);box-shadow:2px 2px 0 var(--ink);font:800 20px var(--display);font-style:normal}
+
+/* ---------- headers ---------- */
+.site-header,.topnav{background:rgba(var(--mist-rgb),.94);border-bottom:2px solid var(--ink)}
+.nav a.pill,.pill{border:2px solid var(--ink);border-radius:12px;background:var(--spice);box-shadow:3px 3px 0 var(--ink)}
+.pill b{background:var(--apricot);color:var(--ink)}
+.nav a.pill.token{background:var(--leafg)}
+
+/* ---------- boxes: outline + hard shadow ---------- */
+.panel,.nowbox,.mealcard,.dpanel,.panel-card,.contact-card,.step-card,.token-card,.tray,.dcard,.dc,.note-box{
+  border:2px solid var(--ink);border-radius:16px;box-shadow:var(--pop)}
+.hero{border:2px solid var(--ink);border-radius:18px;box-shadow:var(--pop);
+  background-image:linear-gradient(rgba(var(--ink-rgb),.88),rgba(var(--ink-rgb),.88)),var(--hero-img,none)}
+.summary{background:var(--sage)}
+.dcard:hover{transform:translate(-2px,-2px);box-shadow:6px 6px 0 var(--ink)}
+.meals-screen .mealcard{background:var(--sage)}
+.mealcard.live,.meals-screen .mealcard.live{background:var(--fresh);border:2px solid var(--ink);box-shadow:var(--pop)}
+.mealcard.live .badge{background:var(--leafg)}
+.status-card{background:#fdeede;border:2px solid var(--ink)}
+.tip,.note-box{background:var(--sage)}
+.state.open,.state-badge,.t-tag,.step.done span{background:var(--fresh);color:#2c5a26}
+.site-footer{color:#eadfd0}
+
+/* ---------- buttons: sticker press ---------- */
+button,.btn{border:2px solid var(--ink);border-radius:12px;box-shadow:3px 3px 0 var(--ink);font-weight:700}
+button:active,.btn:active{transform:translate(2px,2px);box-shadow:1px 1px 0 var(--ink)}
+.qty button,.ln .st button,.ln .s button,.coin,.chat-close,.chat-send,.chat-toggle,.suggestion-btn,.dock .open,.menu-toggle,.step button{box-shadow:none}
+.btn-primary{background:var(--spice)}.btn-light{border-color:var(--ink);background:#fff}
+.hero .btn,.cartbar .btn,.dock .btn,.contact-card .btn,.tray .btn{background:var(--apricot);color:var(--ink)}
+.dock{border:2px solid var(--ink)}
+input:focus,select:focus{border-color:var(--spice);box-shadow:3px 3px 0 var(--apricot)}
+
+/* ---------- laptop home ---------- */
+.d-hero{background:linear-gradient(90deg,rgba(var(--mist-rgb),.96) 0%,rgba(var(--mist-rgb),.84) 42%,rgba(var(--mist-rgb),.4) 75%,rgba(var(--mist-rgb),.62) 100%),var(--hero-img,none) center/cover no-repeat,var(--cream)}
+.avail{background:var(--ink)}
+.avail .eyebrow,.avail h2 em{color:var(--apricot)}
+.avail p.lead,.live-note small,.contact-card p{color:#e6d6c6}
+.contact-card{color:#f1e4d6}
+.how,.about{background:#fff}
+
+/* ---------- chat widget ---------- */
+.eho-chatbot-widget,body.desktop .eho-chatbot-widget{--chat-primary:var(--spice);--chat-dark:var(--ink);--chat-accent:#eaf1dc;--chat-text:var(--ink);--chat-light:#f8faf2;--chat-border:#cfd8bd}
+.chat-window{border:2px solid var(--ink)}

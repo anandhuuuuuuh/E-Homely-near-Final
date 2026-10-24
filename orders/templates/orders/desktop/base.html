@@ -1,0 +1,72 @@
+{% load static %}<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#34583d">
+  {% include 'orders/_ui_cookie.html' %}
+  <title>{% block title %}E-Homely{% endblock %}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Unbounded:wght@600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{% static 'orders/desktop.css' %}">
+  <link rel="stylesheet" href="{% static 'orders/chatbot.css' %}">
+  {% block extra_head %}{% endblock %}
+  <link rel="stylesheet" href="{% static 'orders/theme.css' %}">
+  <script>
+    function paintCount() {
+      let n = 0;
+      try { n = Object.values(JSON.parse(localStorage.getItem('cart') || '{}')).reduce((a, b) => a + b, 0); } catch (e) {}
+      document.querySelectorAll('[data-cart-count]').forEach(el => {
+        const changed = el.textContent !== String(n);
+        el.textContent = n;
+        if (changed) { el.classList.remove('bump'); void el.offsetWidth; el.classList.add('bump'); }
+      });
+      const bar = document.getElementById('cartbar');
+      if (bar) bar.classList.toggle('show', n > 0);
+      try {
+        const url = localStorage.getItem('tokenUrl');
+        const pill = document.getElementById('cartpill');
+        if (pill && url && n === 0) {
+          pill.href = url;
+          document.getElementById('pilllabel').textContent = 'Token';
+          pill.querySelector('b').style.display = 'none';
+        }
+      } catch (e) {}
+    }
+    document.addEventListener('DOMContentLoaded', paintCount);
+    window.addEventListener('pageshow', paintCount);
+  </script>
+</head>
+<body class="desktop {% block bodyclass %}{% endblock %}">
+  <header class="topnav">
+    <div class="wrap">
+      <a class="brand" href="{% url 'menu' %}">
+        <span class="brand-mark">e</span>
+        <span><strong>E-HOMELY</strong><small>HOMELY FOOD NEAR YOU</small></span>
+      </a>
+      <nav class="nav-links">
+        <a href="{% url 'menu' %}">Home</a>
+        <a href="{% url 'meal_menu' 'breakfast' %}">Breakfast</a>
+        <a href="{% url 'meal_menu' 'lunch' %}">Lunch</a>
+        <a href="{% url 'meal_menu' 'dinner' %}">Dinner</a>
+        <a href="{% url 'menu' %}#about">About</a>
+        <a class="pill" id="cartpill" href="{% url 'checkout' %}"><span id="pilllabel">Cart</span> <b data-cart-count>0</b></a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="page">{% block content %}{% endblock %}</main>
+
+  <footer class="foot">
+    <div class="wrap">
+      <a class="fb" href="{% url 'menu' %}">E-HOMELY</a>
+      <span>Pay a small advance online, the rest at the counter.</span>
+      <span>Homely food, near you.</span>
+    </div>
+  </footer>
+
+  <script>window.CHAT_URL="{% url 'chat' %}";window.CHAT_CSRF="{{ csrf_token }}";</script>
+  <script src="{% static 'orders/chatbot.js' %}"></script>
+</body>
+</html>

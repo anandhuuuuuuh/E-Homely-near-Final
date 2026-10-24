@@ -1,0 +1,125 @@
+{% extends 'orders/desktop/base.html' %}
+{% load static %}
+{% block title %}E-Homely | Good food feels like home{% endblock %}
+{% block content %}
+
+<section class="d-hero" style="--hero-img:url('{% static 'orders/hero.jpg' %}')">
+  <div class="wrap">
+    <span class="eyebrow">Freshly listed · Homely feeling</span>
+    <h1>Good food feels <em>like home.</em></h1>
+    <p class="lead">See what is being served today, order ahead and pay a small advance to get your token. Collect it fresh and pay the rest at the counter.</p>
+    <div class="hero-actions">
+      <a class="btn btn-primary" href="#availability">Explore availability <span>&rarr;</span></a>
+      <a class="btn btn-light" href="{% url 'meal_menu' 'lunch' %}">View menu</a>
+    </div>
+    <div class="hero-note">
+      <span class="dot" id="heroDot"></span>
+      <span><strong id="heroTitle">Checking status...</strong><br><small id="heroSub">Please wait</small></span>
+    </div>
+  </div>
+</section>
+
+<section class="avail" id="availability">
+  <div class="wrap">
+    <div>
+      <span class="eyebrow">Check before you go</span>
+      <h2>What is available <em>right now?</em></h2>
+      <p class="lead">Availability changes through the day. You can look at any menu at any time, and order while that meal is being served.</p>
+      <div class="live-note"><span class="dot" id="liveDot"></span><span><strong id="liveTitle">Checking...</strong><small id="liveSub"></small></span></div>
+      {% if not accepting %}<p class="closed-note" style="margin-top:24px">We are not taking pre-orders right now. Please check back soon.</p>{% endif %}
+    </div>
+    <div class="panel-card">
+      <div class="panel-top"><div><strong>Today's meals</strong><small id="clockline">--</small></div></div>
+      {% for m in meals %}
+      <div class="cat-row" id="row-{{ m.key }}">
+        <div><strong>{{ m.label }}</strong><small>{{ m.start_label }} to {{ m.end_label }}</small><span class="msg">Checking...</span></div>
+        <a class="state closed" href="{% url 'meal_menu' m.key %}">Closed</a>
+      </div>
+      {% endfor %}
+      <div class="tip">Tap a meal to see its menu.</div>
+    </div>
+  </div>
+</section>
+
+<section class="how" id="how">
+  <div class="wrap">
+    <span class="eyebrow">How it works</span>
+    <h2>Order ahead. <em>Skip the queue.</em></h2>
+    <p class="lead">Four simple steps from menu to meal.</p>
+    <div class="steps4">
+      <article class="step-card"><span>01</span><h3>Pick a meal</h3><p>Choose breakfast, lunch or dinner and add your dishes.</p></article>
+      <article class="step-card"><span>02</span><h3>Enter your details</h3><p>Just your name and phone number. No sign-up and no email codes.</p></article>
+      <article class="step-card"><span>03</span><h3>Pay an advance</h3><p>Pay {{ advance_text }} of the bill online with UPI, card or netbanking and get your token instantly.</p></article>
+      <article class="step-card"><span>04</span><h3>Collect and pay the rest</h3><p>Show your token at the counter whenever you arrive. It never expires.</p></article>
+    </div>
+  </div>
+</section>
+
+<section class="about" id="about">
+  <div class="wrap about-grid">
+    <div>
+      <span class="eyebrow">About E-Homely</span>
+      <h2>More than just <em>a food order.</em></h2>
+      <p>E-Homely is a small home-style kitchen near the college. We cook simple, filling meals the way they are made at home and pack them fresh, so you can skip the queue and still eat well.</p>
+      <p>Order ahead from your laptop or phone, collect at the counter and pay the balance when you pick up.</p>
+    </div>
+    <div class="contact-card" id="contact">
+      <h3>Find us</h3>
+      <p>Your address, near the college gate</p>
+      <div class="acts">
+        <a class="btn" href="tel:+919074092355">Call us</a>
+        <a class="btn ghost" href="https://wa.me/919074092355">WhatsApp</a>
+      </div>
+      <ul class="hours">
+        {% for m in meals %}<li><span>{{ m.label }}</span><span>{{ m.start_label }} to {{ m.end_label }}</span></li>{% endfor %}
+      </ul>
+    </div>
+  </div>
+</section>
+
+{{ meals|json_script:'meals-data' }}
+<script>
+  const meals = JSON.parse(document.getElementById('meals-data').textContent);
+  const toMin = t => { const [h, m] = t.split(':').map(Number); return h * 60 + m; };
+  const fmt = t => { const [h, m] = t.split(':').map(Number); return (h % 12 || 12) + ':' + String(m).padStart(2, '0') + ' ' + (h >= 12 ? 'PM' : 'AM'); };
+  const dur = mins => { const t = Math.max(1, Math.round(mins)), h = Math.floor(t / 60), m = t % 60; return h ? (m ? `${h} h ${m} min` : `${h} h`) : `${m} min`; };
+
+  function tick() {
+    const now = new Date();
+    const cur = now.getHours() * 60 + now.getMinutes() + now.getSeconds() / 60;
+    document.getElementById('clockline').textContent =
+      now.toLocaleDateString([], {weekday: 'long', day: 'numeric', month: 'long'}) + ' · ' +
+      now.toLocaleTimeString([], {hour: 'numeric', minute: '2-digit'});
+
+    let live = null, next = null, nextIn = Infinity, tomorrow = false;
+    meals.forEach(m => {
+      const s = toMin(m.start), e = toMin(m.end);
+      const isOpen = cur >= s && cur < e;
+      if (isOpen) live = {m, left: e - cur};
+      let d = s - cur, tm = false;
+      if (d <= 0) { d += 1440; tm = true; }
+      if (d < nextIn) { nextIn = d; next = m; tomorrow = tm; }
+
+      const row = document.getElementById('row-' + m.key);
+      const st = row.querySelector('.state');
+      st.className = 'state ' + (isOpen ? 'open' : 'closed');
+      st.textContent = isOpen ? 'Open now' : 'Closed';
+      row.querySelector('.msg').textContent = isOpen
+        ? (e - cur <= 15 ? `Closes in ${Math.ceil(e - cur)} min` : 'Available now')
+        : (cur < s ? `Opens at ${fmt(m.start)}` : `Opens tomorrow at ${fmt(m.start)}`);
+    });
+
+    const title = live ? `${live.m.label} is being served now` : 'Currently closed';
+    const sub = live ? `Open until ${fmt(live.m.end)}, ${dur(live.left)} from now.`
+                     : `Next: ${next.label} ${tomorrow ? 'tomorrow at' : 'at'} ${fmt(next.start)}, in ${dur(nextIn)}.`;
+    ['hero', 'live'].forEach(p => {
+      document.getElementById(p + 'Dot').className = 'dot ' + (live ? 'open' : '');
+    });
+    document.getElementById('heroTitle').textContent = title;
+    document.getElementById('heroSub').textContent = sub;
+    document.getElementById('liveTitle').textContent = title;
+    document.getElementById('liveSub').textContent = sub;
+  }
+  tick(); setInterval(tick, 1000);
+</script>
+{% endblock %}

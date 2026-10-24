@@ -1,0 +1,187 @@
+{% extends 'orders/base.html' %}
+{% load static %}
+{% block title %}E-Homely - Home-style food, ready when you are{% endblock %}
+{% block extra_head %}<link rel="stylesheet" href="{% static 'orders/home.css' %}">{% endblock %}
+{% block bodyclass %}home{% endblock %}
+
+{% block content %}
+
+{# ========== SCREEN 1: hero and live clock ========== #}
+<div class="top">
+<section class="hero" style="--hero-img: url('{% static 'orders/hero.jpg' %}')">
+  <div>
+    <h1>Home-style food, ready when you are.</h1>
+    <p class="hero-long">E-Homely is the home-style kitchen near campus. Pick a meal, order ahead from your phone and collect it fresh. Pay a small advance online and the rest at the counter, so there is no queue.</p>
+    <p class="hero-short">Order ahead, pay a small advance, collect fresh.</p>
+    <div class="cta-wrap">
+      <a class="btn cta" href="#meals">View meals
+        <svg class="cta-arrow" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M6 13l6 6 6-6"/></svg>
+      </a>
+    </div>
+  </div>
+  <img class="hero-logo" src="{% static 'orders/logo.png' %}" alt="E-Homely logo">
+</section>
+
+<section class="nowbox">
+  <div>
+    <div class="clock" id="clock">--:--:--</div>
+    <p class="clockdate" id="clockdate"></p>
+  </div>
+  <div>
+    <p class="nowtitle" id="nowtitle">Checking the kitchen...</p>
+    <p class="nowline" id="nowline"></p>
+  </div>
+</section>
+</div>
+
+{# ========== SCREEN 2: the three meals ========== #}
+<section class="meals-screen" id="meals">
+  <div class="meals-head">
+    <h2>Choose a meal</h2>
+    <p class="fine">Tap a meal to see its menu. You can look at any menu at any time, and order while that meal is being served.</p>
+  </div>
+
+  {% if not accepting %}
+    <p class="closed">We are not taking pre-orders right now. Please check back soon.</p>
+  {% endif %}
+
+  <div class="meals">
+    {% for m in meals %}
+      <a class="mealcard" data-meal="{{ m.key }}" href="{% url 'meal_menu' m.key %}">
+        <span class="badge"></span>
+        <svg class="lock" viewBox="0 0 24 24" aria-hidden="true">
+          <path class="shackle" d="M8 11V8a4 4 0 0 1 8 0v3"/>
+          <rect class="body" x="5" y="11" width="14" height="10" rx="2.5"/>
+        </svg>
+        <h3>{{ m.label }}</h3>
+        <span class="when">{{ m.start_label }} to {{ m.end_label }}</span>
+        <p>{{ m.blurb }}</p>
+        <span class="open" data-view="View {{ m.label|lower }} menu" data-order="Order {{ m.label|lower }} now">View {{ m.label|lower }} menu</span>
+      </a>
+    {% endfor %}
+  </div>
+</section>
+
+{{ meals|json_script:'meals-data' }}
+<script>
+  // Everything the clock needs is defined BEFORE tick() runs (the old version defined it inside tick, which crashed).
+  const TZ = 'Asia/Kolkata';
+  const clockFmt = new Intl.DateTimeFormat('en-US', {timeZone: TZ, hour: 'numeric', minute: '2-digit', second: '2-digit', hour12: true});
+  const dateFmt = new Intl.DateTimeFormat('en-GB', {timeZone: TZ, weekday: 'long', day: 'numeric', month: 'long'});
+  const partsFmt = new Intl.DateTimeFormat('en-GB', {timeZone: TZ, hour: '2-digit', minute: '2-digit', second: '2-digit', hourCycle: 'h23'});
+  function istMinutes(d) {
+    const p = {};
+    partsFmt.formatToParts(d).forEach(x => { p[x.type] = x.value; });
+    return Number(p.hour) * 60 + Number(p.minute) + Number(p.second) / 60;
+  }
+
+  function fitHeader() {
+    const h = document.querySelector('.site-header').offsetHeight;
+    document.documentElement.style.setProperty('--hdr', (h - 1) + 'px');
+  }
+  fitHeader();
+  window.addEventListener('resize', fitHeader);
+
+  const meals = JSON.parse(document.getElementById('meals-data').textContent);
+  const toMin = t => { const [h, m] = t.split(':').map(Number); return h * 60 + m; };
+  const fmt = t => {
+    const [h, m] = t.split(':').map(Number);
+    return (h % 12 || 12) + ':' + String(m).padStart(2, '0') + ' ' + (h >= 12 ? 'PM' : 'AM');
+  };
+  const dur = mins => {
+    const t = Math.max(1, Math.round(mins));
+    const h = Math.floor(t / 60), m = t % 60;
+    return h ? (m ? `${h} h ${m} min` : `${h} h`) : `${m} min`;
+  };
+
+  function tick() {
+    const now = new Date();
+    const cur = istMinutes(now);
+    document.getElementById('clock').textContent = clockFmt.format(now);
+    document.getElementById('clockdate').textContent = dateFmt.format(now);
+
+    let live = null, next = null, nextIn = Infinity, tomorrow = false;
+    meals.forEach(m => {
+      const s = toMin(m.start), e = toMin(m.end);
+      if (cur >= s && cur < e) live = {m, left: e - cur};
+      let d = s - cur, tm = false;
+      if (d <= 0) { d += 1440; tm = true; }
+      if (d < nextIn) { nextIn = d; next = m; tomorrow = tm; }
+    });
+
+    document.querySelectorAll('[data-meal]').forEach(card => {
+      const isLive = live && live.m.key === card.dataset.meal;
+      const isNext = !live && next && next.key === card.dataset.meal;
+      card.classList.toggle('live', !!isLive);
+      card.classList.toggle('soon', !!isNext);
+      card.querySelector('.badge').textContent = isLive ? 'Serving now' : (isNext ? 'Up next' : '');
+      const open = card.querySelector('.open');
+      open.textContent = isLive ? open.dataset.order : open.dataset.view;
+    });
+
+    const title = document.getElementById('nowtitle');
+    const line = document.getElementById('nowline');
+    if (live) {
+      title.textContent = `${live.m.label} is being served now`;
+      line.textContent = `Open until ${fmt(live.m.end)}, which is ${dur(live.left)} from now.`;
+    } else {
+      title.textContent = `Up next: ${next.label}`;
+      line.textContent = `Starts ${tomorrow ? 'tomorrow at' : 'at'} ${fmt(next.start)}, in ${dur(nextIn)}.`;
+    }
+  }
+
+  tick();
+  setInterval(tick, 1000);
+</script>
+{% endblock %}
+
+
+{# ========== SCREEN 3: about, how it works, contact ========== #}
+{% block footer %}
+{# EDIT: change your real address and days here. #}
+{% with phone="90740 92355" phone_intl="919074092355" address="Your address, near the college gate" days="Monday to Saturday" %}
+<footer class="site-footer about" id="contact">
+  <div class="about-inner">
+    <div class="about-grid">
+
+      <div id="about">
+        <h2>About us</h2>
+        <p>E-Homely is a small home-style kitchen near the college. We cook simple, filling meals the way they are made at home and pack them fresh, so you can skip the queue and still eat well.</p>
+        <p>Order ahead from your phone, collect at the counter and pay the rest when you pick up.</p>
+      </div>
+
+      <div>
+        <h2>How it works</h2>
+        <ol class="steps">
+          <li>Pick a meal and swipe the dishes you want onto your plate.</li>
+          <li>Enter your name and phone, then pay a small advance online to get your token.</li>
+          <li>Show your token at the counter any time (it never expires) and pay the rest.</li>
+        </ol>
+      </div>
+
+      <div>
+        <h2>Contact</h2>
+        <p>{{ address }}</p>
+        <div class="contact-btns">
+          <a class="btn" href="tel:+{{ phone_intl }}">Call {{ phone }}</a>
+          <a class="btn" href="https://wa.me/{{ phone_intl }}">WhatsApp</a>
+          <a class="btn ghost" href="https://www.google.com/maps/search/?api=1&amp;query={{ address|urlencode }}">Open in Maps</a>
+        </div>
+        <h3>Hours</h3>
+        <p class="days">{{ days }}</p>
+        <ul class="hours">
+          {% for m in meals %}
+            <li><span>{{ m.label }}</span><span>{{ m.start_label }} to {{ m.end_label }}</span></li>
+          {% endfor %}
+        </ul>
+      </div>
+
+    </div>
+  </div>
+  <div class="copy">
+    &copy; E-Homely. Pay an advance online, the rest at the counter.
+    <a href="#">Back to top</a>
+  </div>
+</footer>
+{% endwith %}
+{% endblock %}

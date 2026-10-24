@@ -1,0 +1,44 @@
+import json
+import os
+import urllib.request
+
+from django.conf import settings
+from django.core.mail import send_mail
+
+BREVO_URL = 'https://api.brevo.com/v3/smtp/email'
+
+
+def _send_via_brevo(api_key, email, code):
+    payload = {
+        'sender': {'name': 'E-Homely', 'email': settings.DEFAULT_FROM_EMAIL},
+        'to': [{'email': email}],
+        'subject': 'Your E-Homely order code',
+        'textContent': f'Your code is {code}. It expires in 5 minutes.',
+    }
+    req = urllib.request.Request(
+        BREVO_URL,
+        data=json.dumps(payload).encode('utf-8'),
+        headers={
+            'api-key': api_key,
+            'content-type': 'application/json',
+            'accept': 'application/json',
+        },
+        method='POST',
+    )
+    # Any failure (timeout, bad key, bad sender) raises an OSError subclass,
+    # which checkout() already catches and shows as "We could not send the code".
+    with urllib.request.urlopen(req, timeout=10) as resp:
+        resp.read()
+
+
+def send_code(email, code):
+    api_key = os.environ.get('BREVO_API_KEY', '')
+    if api_key:
+        _send_via_brevo(api_key, email, code)
+        return
+    send_mail(
+        subject='Your E-Homely order code',
+        message=f'Your code is {code}. It expires in 5 minutes.',
+        from_email=settings.DEFAULT_FROM_EMAIL,
+        recipient_list=[email],
+    )

@@ -1,0 +1,88 @@
+import secrets
+from datetime import timedelta
+
+from django.contrib.auth.hashers import check_password, make_password
+from django.core.exceptions import ValidationError
+from django.core.validators import validate_email
+from django.utils import timezone
+
+from .mailer import send_code
+from .models import PhoneVerification
+
+MAX_CODES_PER_HOUR = 3  # raise this while testing, then set it back
+
+
+def clean_phone(raw):
+    digits = ''.join(ch for ch in raw if ch.isdigit())
+    return digits if 10 <= len(digits) <= 13 else None
+
+
+def clean_email(raw):
+    email = raw.strip().lower()
+    try:
+        validate_email(email)
+    except ValidationError:
+        return None
+
+    # Gmail ignores dots and +tags, so john.doe+1@gmail.com is the same
+    # inbox as johndoe@gmail.com. Treat them as one address.
+    local, _, domain = email.partition('@')
+    if domain in ('gmail.com', 'googlemail.com'):
+        local = local.split('+')[0].replace('.', '')
+        domain = 'gmail.com'
+    return f'{local}@{domain}'
+
+
+MAX_CODES_PER_HOUR = 5
+RESEND_COOLDOWN_SECONDS = 30
+CODE_LIFETIME_MINUTES = 5
+MAX_ATTEMPTS = 5
+
+
+def start_verification(email):
+    """Send a code. Returns 'sent', 'cooldown' or 'limit'."""
+    now = timezone.now()
+    recent = PhoneVerification.objects.filter(
+        email=email,
+        created__gte=now - timedelta(hours=1),
+    )
+    if recent.count() >= MAX_CODES_PER_HOUR:
+        return 'limit'
+
+    latest = recent.order_by('-created').first()
+    if latest and (now - latest.created).total_seconds() < RESEND_COOLDOWN_SECONDS:
+        return 'cooldown'  # a fresh code was just sent; don't spam
+
+    code = f'{secrets.randbelow(1000000):06d}'
+    v = PhoneVerification.objects.create(
+        email=email,
+        code_hash=make_password(code),
+        expires_at=now + timedelta(minutes=CODE_LIFETIME_MINUTES),
+    )
+    try:
+        send_code(email, code)
+    except Exception:
+        v.delete()  # a failed send must not count against the hourly limit
+        raise
+    return 'sent'
+
+
+def check_code(email, code):
+    """Returns 'ok', 'wrong', 'expired' or 'locked'."""
+    v = (
+        PhoneVerification.objects
+        .filter(email=email, verified=False)
+        .order_by('-created')
+        .first()
+    )
+    if v is None or v.expires_at < timezone.now():
+        return 'expired'
+    if v.attempts >= MAX_ATTEMPTS:
+        return 'locked'
+
+    v.attempts += 1
+    ok = check_password(code, v.code_hash)
+    if ok:
+        v.verified = True
+    v.save()
+    return 'ok' if ok else 'wrong'

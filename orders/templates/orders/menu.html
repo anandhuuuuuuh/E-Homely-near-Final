@@ -1,0 +1,27 @@
+{% extends 'orders/base.html' %}
+{% block title %}{{ meal.label }} menu - E-Homely{% endblock %}
+{% block extra_head %}<style>
+:root{--R:min(46vw,34vh,190px)}
+.mt{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin:2px 0 10px}
+.mt a{text-align:center;padding:9px 4px;border:2px solid var(--ink);border-radius:12px;background:#fff;color:var(--ink);font-weight:700;font-size:14px;text-decoration:none}
+.mt a.on{background:var(--leaf);color:#fff}
+.pn{margin:0 0 10px;padding-right:calc(var(--R) + 6px);font-size:14px;color:var(--muted)}.pn b{color:var(--ink)}
+.pstage{min-height:calc(100svh - var(--hdr) - 110px)}
+.pstage .wlist{width:calc(100vw - var(--R) - 40px);padding:14px;position:sticky;top:calc(var(--hdr) + 8px);
+  max-height:calc(100svh - var(--hdr) - 24px);overflow:auto}
+</style>{% endblock %}
+{% block content %}
+<nav class="mt" aria-label="Meals">
+  {% for m in meals %}<a href="{% url 'meal_menu' m.key %}"{% if m.key == meal.key %} class="on" aria-current="page"{% endif %}>{{ m.label }}</a>{% endfor %}
+</nav>
+<p class="pn"><b>{{ meal.start_label }} to {{ meal.end_label }}</b> &middot; {{ state_label }}</p>
+{% if not accepting %}
+  <p class="closed pn">We are not taking pre-orders right now. Please check back soon.</p>
+{% elif not serving %}
+  <p class="closed pn">You can spin through the menu, but {{ meal.label|lower }} can only be ordered between {{ meal.start_label }} and {{ meal.end_label }}.</p>
+{% endif %}
+<div class="pstage">
+  <script>window.WHEEL_TAPFOCUS = true;</script>
+  {% include 'orders/_wheel.html' %}
+</div>
+{% endblock %}

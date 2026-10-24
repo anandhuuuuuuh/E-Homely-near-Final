@@ -1,0 +1,76 @@
+{% load static %}<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#1f6b45">
+  {% include 'orders/_ui_cookie.html' %}
+  <title>{% block title %}E-Homely{% endblock %}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Unbounded:wght@600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{% static 'orders/style.css' %}">
+  <link rel="stylesheet" href="{% static 'orders/chatbot.css' %}">
+  {% block extra_head %}{% endblock %}
+  <link rel="stylesheet" href="{% static 'orders/theme.css' %}">
+  <script>
+    // Shared by every page: cart count, and Cart -> Token while a token is active.
+    function paintCount() {
+      let n = 0;
+      try {
+        n = Object.values(JSON.parse(localStorage.getItem('cart') || '{}')).reduce((a, b) => a + b, 0);
+      } catch (e) {}
+      document.querySelectorAll('[data-cart-count]').forEach(el => {
+        const changed = el.textContent !== String(n);
+        el.textContent = n;
+        if (changed) { el.classList.remove('bump'); void el.offsetWidth; el.classList.add('bump'); }
+      });
+      const bar = document.getElementById('cartbar');
+      if (bar) bar.classList.toggle('show', n > 0);
+      try {
+        const url = localStorage.getItem('tokenUrl');
+        const pill = document.getElementById('cartpill');
+        if (pill && url && n === 0) {
+          pill.href = url;
+          document.getElementById('pilllabel').textContent = 'Token';
+          pill.querySelector('b').style.display = 'none';
+        }
+      } catch (e) {}
+    }
+    document.addEventListener('DOMContentLoaded', paintCount);
+    window.addEventListener('pageshow', paintCount);
+  </script>
+</head>
+<body class="{% block bodyclass %}{% endblock %}">
+  <header class="site-header">
+    <div class="bar">
+      <a class="brand" href="{% url 'menu' %}"><span class="logo">E</span>E-Homely</a>
+      <nav class="nav">
+        {% if '/staff/' in request.path %}
+          <a href="/staff/">Orders</a>
+          <a href="/staff/menu/">Stock</a>
+        {% else %}
+          <a href="{% url 'menu' %}">Menu</a>
+          <a class="pill" id="cartpill" href="{% url 'checkout' %}"><span id="pilllabel">Cart</span> <b data-cart-count>0</b></a>
+        {% endif %}
+      </nav>
+    </div>
+  </header>
+
+  <main>{% block content %}{% endblock %}</main>
+
+  {% block footer %}
+  <footer class="site-footer">
+    <div class="copy">
+      &copy; E-Homely. Pay an advance online, the rest at the counter.
+      <a href="{% url 'menu' %}#contact" style="color:var(--haldi)">About and contact</a>
+    </div>
+  </footer>
+  {% endblock %}
+
+  {% if '/staff/' not in request.path %}
+  <script>window.CHAT_URL="{% url 'chat' %}";window.CHAT_CSRF="{{ csrf_token }}";</script>
+  <script src="{% static 'orders/chatbot.js' %}"></script>
+  {% endif %}
+</body>
+</html>
